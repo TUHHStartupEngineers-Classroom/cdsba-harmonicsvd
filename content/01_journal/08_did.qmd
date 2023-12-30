@@ -5,3 +5,30 @@ title: "Difference-in-Differences"
 ::: callout-note
 You can delete everything in here and start fresh.
 :::
+
+#
+data <- readRDS("hospdd.rds")
+
+# Manually compute mean satisfaction for treated and control hospitals before and after the treatment
+before_treated_mean <- mean(pull(filter(data, procedure == "new", month == "before"), satis))
+after_treated_mean <- mean(pull(filter(data, procedure == "new", month == "after"), satis))
+before_control_mean <- mean(pull(filter(data, procedure == "old", month == "before"), satis))
+after_control_mean <- mean(pull(filter(data, procedure == "old", month == "after"), satis))
+
+# Calculate the differences
+diff_treated <- after_treated_mean - before_treated_mean
+diff_control <- after_control_mean - before_control_mean
+
+# Compute the difference-in-differences estimate
+diff_in_diff_estimate <- diff_treated - diff_control
+
+# Run linear regression
+reg_model <- lm(satis ~ procedure * month + hospital, data = data)
+
+# Extract coefficients and standard errors
+coefficients <- summary(reg_model)$coefficients
+
+# Extract the difference-in-differences estimate
+diff_in_diff_estimate_regression <- coefficients["procedure1:month4", "Estimate"]
+
+
