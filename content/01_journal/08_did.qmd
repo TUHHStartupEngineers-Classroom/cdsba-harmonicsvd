@@ -4,32 +4,35 @@
 
 ```{r}
 
+# Load necessary libraries
+library(tidyverse)
 
 # Load the data
 data <- readRDS("hospdd.rds")
 
-# Manually compute means for treated and control hospitals before and after treatment
-before_treated_mean <- mean(filter(data, procedure == 1, month <= 3)$satis)
-after_treated_mean <- mean(filter(data, procedure == 1, month >= 4)$satis)
-before_control_mean <- mean(filter(data, procedure == 0, month <= 3)$satis)
-after_control_mean <- mean(filter(data, procedure == 0, month >= 4)$satis)
+# Explore the structure of the dataset
+str(data)
 
-# Compute DiD estimate
-diff_treated <- after_treated_mean - before_treated_mean
-diff_control <- after_control_mean - before_control_mean
-did_estimate_manual <- diff_treated - diff_control
 
-# Using linear regression with fixed effects
-# Choose one of the following two options for fixed effects
-# 1. month + hospital
-reg_model1 <- lm(satis ~ procedure * month + hospital, data = data)
+mean_satisfaction <- data %>%
+  group_by(procedure, month) %>%
+  summarize(mean_satisfaction = mean(satis))
 
-# 2. as.factor(month) + as.factor(hospital)
-reg_model2 <- lm(satis ~ procedure * as.factor(month) + as.factor(hospital), data = data)
+# Print the computed means
+print(mean_satisfaction)
 
-# Print summaries
-summary(reg_model1)
-summary(reg_model2)
+
+
+# Option 1: Using month + hospital
+model1 <- lm(satis ~ procedure * month + factor(hospital), data = data)
+
+# Option 2: Using as.factor(month) + as.factor(hospital)
+model2 <- lm(satis ~ procedure * as.factor(month) + as.factor(hospital), data = data)
+
+# Print the summary of the regression models
+summary(model1)
+summary(model2)
+
 
 
 ```

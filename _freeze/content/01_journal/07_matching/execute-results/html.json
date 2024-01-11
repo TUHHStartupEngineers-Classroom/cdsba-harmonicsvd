@@ -1,0 +1,18 @@
+{
+  "hash": "518f2bc1454465aaed6345b1b80bce0d",
+  "result": {
+    "markdown": "::: {.cell hash='07_matching_cache/html/unnamed-chunk-1_23a982dcd30b5c33b1069deaadd4e334'}\n\n```{.r .cell-code}\nlibrary(MatchIt)\nlibrary(tidyverse)\nlibrary(dagitty)\n# Load data\nmy_data <- readRDS(\"membership.rds\")\n\n# DAG\ndag <- dagitty(\"dag {\n  age -> avg_purch\n  sex -> avg_purch\n  pre_avg_purch -> avg_purch\n  card -> avg_purch\n}\")\n\n\n\n\n#  Naive Estimate\nnaive_estimate <- lm(avg_purch ~ sex, data = my_data)\n\n#  (Coarsened) Exact Matching\nexact_match <- matchit(sex ~ age + card + pre_avg_purch, data = my_data, method = \"cem\")\n\n# Obtain matched dataset\nmatched_data_exact <- match.data(exact_match)\n\n# Estimate treatment effect\nexact_estimate <- lm(avg_purch ~ sex, data = matched_data_exact)\n\n# Nearest-Neighbor Matching\nnn_match <- matchit(sex ~ age + card + pre_avg_purch, data = my_data, method = \"nearest\")\n```\n\n::: {.cell-output .cell-output-stderr}\n```\n#> Warning: Fewer control units than treated units; not all treated units will get\n#> a match.\n```\n:::\n\n```{.r .cell-code}\n# Obtain matched dataset\nmatched_data_nn <- match.data(nn_match)\n\n# Estimate treatment effect\nnn_estimate <- lm(avg_purch ~ sex, data = matched_data_nn)\n\n# Inverse Probability Weighting (IPW)\n# Estimate propensity scores\nps_model <- glm(sex ~ age + card + pre_avg_purch, data = my_data, family = \"binomial\")\nmy_data$propensity_score <- predict(ps_model, type = \"response\")\n\n# Inverse Probability Weighting\nipw_model <- lm(avg_purch ~ sex + propensity_score, data = my_data, weights = 1/my_data$propensity_score)\n\n# View results\nsummary(ipw_model)\n```\n\n::: {.cell-output .cell-output-stdout}\n```\n#> \n#> Call:\n#> lm(formula = avg_purch ~ sex + propensity_score, data = my_data, \n#>     weights = 1/my_data$propensity_score)\n#> \n#> Weighted Residuals:\n#>      Min       1Q   Median       3Q      Max \n#> -148.119  -31.823   -0.492   30.847  166.076 \n#> \n#> Coefficients:\n#>                   Estimate Std. Error t value Pr(>|t|)    \n#> (Intercept)      -22.97592   18.49749  -1.242    0.214    \n#> sex                0.07167    0.65041   0.110    0.912    \n#> propensity_score 197.60294   36.72735   5.380 7.61e-08 ***\n#> ---\n#> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n#> \n#> Residual standard error: 45.82 on 9997 degrees of freedom\n#> Multiple R-squared:  0.002891,\tAdjusted R-squared:  0.002692 \n#> F-statistic: 14.49 on 2 and 9997 DF,  p-value: 5.178e-07\n```\n:::\n:::",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {
+      "include-in-header": [
+        "<link href=\"../../site_libs/pagedtable-1.1/css/pagedtable.css\" rel=\"stylesheet\" />\n<script src=\"../../site_libs/pagedtable-1.1/js/pagedtable.js\"></script>\n"
+      ]
+    },
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

@@ -1,43 +1,42 @@
 ```{r}
-# Load necessary libraries
 
-# Load necessary libraries
-library(rdd)
-library(ggplot2)
+library(tidyverse)
 
-# Read data
-data <- readRDS("coupon.rds")
+# Load data
+coupon_data <- readRDS("coupon.rds")
 
-# Extract variables
-running_variable <- data$ days_since_last_centered
-outcome_variable <- data$ purchase_after
-threshold <- 0  
-original_bandwidth <- 0.1
 
-# RDD analysis
-rdd_result_original <- rdd(data, y = outcome_variable, x = running_variable, cutpoint = threshold, h = original_bandwidth)
-
-half_bandwidth <- original_bandwidth / 2
-rdd_result_half <- rdd(data, y = outcome_variable, x = running_variable, cutpoint = threshold, h = half_bandwidth)
-
-double_bandwidth <- original_bandwidth * 2
-rdd_result_double <- rdd(data, y = outcome_variable, x = running_variable, cutpoint = threshold, h = double_bandwidth)
-
-# Summarize RDD results
-summary(rdd_result_original)
-summary(rdd_result_half)
-summary(rdd_result_double)
-
-# Read shipping data
 shipping_data <- readRDS("shipping.rds")
 
-# Create a plot
-ggplot(shipping_data, aes(x = purchase_amount, y = outcome_variable)) +
-  geom_point() +
-  geom_vline(xintercept = 30, linetype = "dashed", color = "red") +
-  labs(title = "Relationship between Purchase Amount and Outcome Variable",
-       x = "Purchase Amount",
-       y = "Outcome Variable") +
-  theme_minimal()
+# Explore the structure of the shipping dataset
+str(shipping_data)
+
+
+ggplot(shipping_data, aes(x = purchase_amount)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Purchase Amount", x = "Purchase Amount", y = "Frequency")
+
+
+rd_analysis <- function(data, bandwidth) {
+  model <- lm(purchase_after ~ as.numeric(days_since_last_centered) + factor(coupon),
+               data = data %>% filter(abs(days_since_last_centered) <= bandwidth))
+  summary(model)
+}
+
+# Run the analysis with different bandwidths
+original_result <- rd_analysis(coupon_data, bandwidth = 20)
+half_bandwidth_result <- rd_analysis(coupon_data, bandwidth = 10)
+double_bandwidth_result <- rd_analysis(coupon_data, bandwidth = 40)
+
+# Print the results
+print("Original Bandwidth:")
+print(original_result)
+
+print("Half Bandwidth:")
+print(half_bandwidth_result)
+
+print("Double Bandwidth:")
+print(double_bandwidth_result)
+
 
 ```

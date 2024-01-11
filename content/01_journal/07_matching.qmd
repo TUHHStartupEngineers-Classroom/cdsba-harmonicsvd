@@ -1,12 +1,12 @@
 
 ```{r}
-library(dagitty)
+
+
 library(MatchIt)
 library(tidyverse)
-library(ipw)
-
+library(dagitty)
 # Load data
-membership_data <- readRDS("membership.rds")
+my_data <- readRDS("membership.rds")
 
 # DAG
 dag <- dagitty("dag {
@@ -16,28 +16,40 @@ dag <- dagitty("dag {
   card -> avg_purch
 }")
 
-# Calculate averages before and after using the correct data frame
-before_mean <- mean(membership_data$pre_avg_purch)
-after_mean <- mean(membership_data$avg_purch)
-
-# Naive estimate of ATE
-naive_ate <- after_mean - before_mean
-
-# Define the variables for matching
-matching_vars <- c("age", "sex", "pre_avg_purch")
 
 
-treatment_variable <- plus_membership
 
+#  Naive Estimate
+naive_estimate <- lm(avg_purch ~ sex, data = my_data)
 
+#  (Coarsened) Exact Matching
+exact_match <- matchit(sex ~ age + card + pre_avg_purch, data = my_data, method = "cem")
+
+# Obtain matched dataset
+matched_data_exact <- match.data(exact_match)
+
+# Estimate treatment effect
+exact_estimate <- lm(avg_purch ~ sex, data = matched_data_exact)
+
+# Nearest-Neighbor Matching
+nn_match <- matchit(sex ~ age + card + pre_avg_purch, data = my_data, method = "nearest")
+
+# Obtain matched dataset
+matched_data_nn <- match.data(nn_match)
+
+# Estimate treatment effect
+nn_estimate <- lm(avg_purch ~ sex, data = matched_data_nn)
+
+# Inverse Probability Weighting (IPW)
 # Estimate propensity scores
-ps_model <- glm(plus_membership ~ age + sex + pre_avg_purch, data = membership_data, family = "binomial")
-store_data$propensity_score <- predict(ps_model, type = "response")
+ps_model <- glm(sex ~ age + card + pre_avg_purch, data = my_data, family = "binomial")
+my_data$propensity_score <- predict(ps_model, type = "response")
 
-# Perform inverse probability weighting
-ipw_result <- weightit(weave = FALSE, propensity_score ~ plus_membership, data = membership_data)
+# Inverse Probability Weighting
+ipw_model <- lm(avg_purch ~ sex + propensity_score, data = my_data, weights = 1/my_data$propensity_score)
 
-# Check the summary of weights
-summary(ipw_result$weights)
+# View results
+summary(ipw_model)
+
 
 ```
