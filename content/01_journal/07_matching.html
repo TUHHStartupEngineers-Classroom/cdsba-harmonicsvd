@@ -150,26 +150,58 @@ ul.task-list li input[type="checkbox"] {
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul class="collapse">
+  <li><a href="#assuming-you-have-a-time-variable-indicating-beforeafter" id="toc-assuming-you-have-a-time-variable-indicating-beforeafter" class="nav-link active" data-scroll-target="#assuming-you-have-a-time-variable-indicating-beforeafter"><span class="header-section-number">1</span> Assuming you have a time variable indicating before/after</a></li>
+  <li><a href="#calculate-averages-before-and-after" id="toc-calculate-averages-before-and-after" class="nav-link" data-scroll-target="#calculate-averages-before-and-after"><span class="header-section-number">2</span> Calculate averages before and after</a></li>
+  <li><a href="#naive-estimate-of-ate" id="toc-naive-estimate-of-ate" class="nav-link" data-scroll-target="#naive-estimate-of-ate"><span class="header-section-number">3</span> Naive estimate of ATE</a></li>
+  <li><a href="#define-the-variables-for-matching" id="toc-define-the-variables-for-matching" class="nav-link" data-scroll-target="#define-the-variables-for-matching"><span class="header-section-number">4</span> Define the variables for matching</a></li>
+  <li><a href="#perform-coarsened-exact-matching" id="toc-perform-coarsened-exact-matching" class="nav-link" data-scroll-target="#perform-coarsened-exact-matching"><span class="header-section-number">5</span> Perform coarsened exact matching</a></li>
+  <li><a href="#estimate-propensity-scores" id="toc-estimate-propensity-scores" class="nav-link" data-scroll-target="#estimate-propensity-scores"><span class="header-section-number">6</span> Estimate propensity scores</a></li>
+  <li><a href="#perform-inverse-probability-weighting" id="toc-perform-inverse-probability-weighting" class="nav-link" data-scroll-target="#perform-inverse-probability-weighting"><span class="header-section-number">7</span> Perform inverse probability weighting</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
 
-<p>data &lt;- readRDS(“membership.rds”)</p>
+<p>library(dagitty) library(MatchIt) library(tidyverse) library(ipw) library(cem)</p>
+<p>membership_data &lt;- readRDS(“membership.rds”)</p>
 <p>dag &lt;- dagitty(“dag { age -&gt; avg_purch sex -&gt; avg_purch pre_avg_purch -&gt; avg_purch card -&gt; avg_purch }”)</p>
-<p>plot(dag)</p>
-<p>naive_ate &lt;- mean(data<span class="math inline">\(avg_purch[data\)</span>card == 1]) - mean(data<span class="math inline">\(avg_purch[data\)</span>card == 0])</p>
-<p>exact_match &lt;- matchit(card ~ age + sex + pre_avg_purch, data = data, method = “cem”)</p>
-<p>nn_match &lt;- matchit(card ~ age + sex + pre_avg_purch, data = data, method = “nearest”)</p>
-<p>ipw_model &lt;- twang(treatment = data<span class="math inline">\(card,  x = cbind(data\)</span>age, data<span class="math inline">\(sex, data\)</span>pre_avg_purch), y = data$avg_purch)</p>
-<p>exact_match_ate &lt;- lm(avg_purch ~ card, data = match.data(exact_match))</p>
-<p>nn_match_ate &lt;- lm(avg_purch ~ card, data = match.data(nn_match))</p>
-<p>ipw_ate &lt;- lm(avg_purch ~ card, weights = ipw_model$weights, data = data)</p>
-<p>cat(“Naive ATE:”, naive_ate) cat(“Coarsened Exact Matching ATE:”, coef(exact_match_ate)[2]) cat(“Nearest-Neighbor Matching ATE:”, coef(nn_match_ate)[2]) cat(“Inverse Probability Weighting ATE:”, coef(ipw_ate)[2])</p>
+<section id="assuming-you-have-a-time-variable-indicating-beforeafter" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Assuming you have a time variable indicating before/after</h1>
+<p>membership_data<span class="math inline">\(time &lt;- as.factor(membership_data\)</span>time_variable)</p>
+</section>
+<section id="calculate-averages-before-and-after" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Calculate averages before and after</h1>
+<p>before_mean &lt;- mean(membership_data<span class="math inline">\(sales[membership_data\)</span>time == “before”]) after_mean &lt;- mean(membership_data<span class="math inline">\(sales[membership_data\)</span>time == “after”])</p>
+</section>
+<section id="naive-estimate-of-ate" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Naive estimate of ATE</h1>
+<p>naive_ate &lt;- after_mean - before_mean</p>
+</section>
+<section id="define-the-variables-for-matching" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Define the variables for matching</h1>
+<p>matching_vars &lt;- c(“age”, “sex”, “pre_avg_purch”)</p>
+</section>
+<section id="perform-coarsened-exact-matching" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Perform coarsened exact matching</h1>
+<p>cem_result &lt;- cem(time ~ matching_vars, data = membership_data) matched_data_cem &lt;- match.data(cem_result)</p>
+</section>
+<section id="estimate-propensity-scores" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Estimate propensity scores</h1>
+<p>ps_model &lt;- glm(time ~ matching_vars, data = membership_data, family = “binomial”) membership_data$propensity_score &lt;- predict(ps_model, type = “response”)</p>
+</section>
+<section id="perform-inverse-probability-weighting" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Perform inverse probability weighting</h1>
+<p>ipw_result &lt;- weightit(weave = FALSE, propensity_score ~ time, data = membership_data) weighted_data &lt;- as.data.frame(ipw_result<span class="math inline">\(weights * membership_data\)</span>sales) weighted_ate &lt;- mean(weighted_data[membership_data<span class="math inline">\(time == "after"]) -  mean(weighted_data[membership_data\)</span>time == “before”])</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
