@@ -1,10 +1,14 @@
 
+```{r}
+library(dagitty)
+library(MatchIt)
+library(tidyverse)
+library(ipw)
 
-data <- readRDS("membership.rds")
+# Load data
+membership_data <- readRDS("membership.rds")
 
-
-
-
+# DAG
 dag <- dagitty("dag {
   age -> avg_purch
   sex -> avg_purch
@@ -12,34 +16,28 @@ dag <- dagitty("dag {
   card -> avg_purch
 }")
 
+# Calculate averages before and after using the correct data frame
+before_mean <- mean(membership_data$pre_avg_purch)
+after_mean <- mean(membership_data$avg_purch)
 
-plot(dag)
+# Naive estimate of ATE
+naive_ate <- after_mean - before_mean
 
-
-naive_ate <- mean(data$avg_purch[data$card == 1]) - mean(data$avg_purch[data$card == 0])
-
-
-exact_match <- matchit(card ~ age + sex + pre_avg_purch, data = data, method = "cem")
-
-
-nn_match <- matchit(card ~ age + sex + pre_avg_purch, data = data, method = "nearest")
+# Define the variables for matching
+matching_vars <- c("age", "sex", "pre_avg_purch")
 
 
-ipw_model <- twang(treatment = data$card, 
-                   x = cbind(data$age, data$sex, data$pre_avg_purch),
-                   y = data$avg_purch)
+treatment_variable <- plus_membership
 
 
-exact_match_ate <- lm(avg_purch ~ card, data = match.data(exact_match))
+# Estimate propensity scores
+ps_model <- glm(plus_membership ~ age + sex + pre_avg_purch, data = membership_data, family = "binomial")
+store_data$propensity_score <- predict(ps_model, type = "response")
 
+# Perform inverse probability weighting
+ipw_result <- weightit(weave = FALSE, propensity_score ~ plus_membership, data = membership_data)
 
-nn_match_ate <- lm(avg_purch ~ card, data = match.data(nn_match))
+# Check the summary of weights
+summary(ipw_result$weights)
 
-
-ipw_ate <- lm(avg_purch ~ card, weights = ipw_model$weights, data = data)
-
-
-cat("Naive ATE:", naive_ate)
-cat("Coarsened Exact Matching ATE:", coef(exact_match_ate)[2])
-cat("Nearest-Neighbor Matching ATE:", coef(nn_match_ate)[2])
-cat("Inverse Probability Weighting ATE:", coef(ipw_ate)[2])
+```
