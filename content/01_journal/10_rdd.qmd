@@ -1,42 +1,45 @@
 ```{r}
-
 library(tidyverse)
 
 # Load data
 coupon_data <- readRDS("coupon.rds")
-
-
 shipping_data <- readRDS("shipping.rds")
 
 # Explore the structure of the shipping dataset
 str(shipping_data)
 
-
+# Plotting the distribution of purchase_amount
 ggplot(shipping_data, aes(x = purchase_amount)) +
   geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
   labs(title = "Distribution of Purchase Amount", x = "Purchase Amount", y = "Frequency")
 
-
+# Regression Discontinuity Design (RDD) Analysis Function
 rd_analysis <- function(data, bandwidth) {
   model <- lm(purchase_after ~ as.numeric(days_since_last_centered) + factor(coupon),
                data = data %>% filter(abs(days_since_last_centered) <= bandwidth))
   summary(model)
 }
 
-# Run the analysis with different bandwidths
+# Run the analysis with different bandwidths for the coupon campaign
 original_result <- rd_analysis(coupon_data, bandwidth = 20)
 half_bandwidth_result <- rd_analysis(coupon_data, bandwidth = 10)
 double_bandwidth_result <- rd_analysis(coupon_data, bandwidth = 40)
 
-# Print the results
-print("Original Bandwidth:")
+# Print the results for the coupon campaign
+cat("Coupon Campaign Results:\n")
+cat("Original Bandwidth:\n")
 print(original_result)
-
-print("Half Bandwidth:")
+cat("\nHalf Bandwidth:\n")
 print(half_bandwidth_result)
-
-print("Double Bandwidth:")
+cat("\nDouble Bandwidth:\n")
 print(double_bandwidth_result)
+
+# Argument for using purchase_amount as a running variable with a cut-off at 30€
+ggplot(shipping_data, aes(x = purchase_amount, y = "")) +
+  geom_point(color = ifelse(shipping_data$purchase_amount > 30, "red", "blue")) +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "green") +
+  labs(title = "Scatter Plot of Purchase Amount and Outcome",
+       x = "Purchase Amount", y = "Outcome (e.g., response variable)")
 
 
 ```
